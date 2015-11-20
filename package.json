@@ -10,7 +10,6 @@
   "dependencies": {
     "babel-core": "^6.1.2",
     "babel-loader": "^6.1.0",
-    "lodash": "^3.10.1",
     "lodash-es": "^3.10.0",
     "webpack": "^1.12.3"
   },

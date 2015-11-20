@@ -5,7 +5,10 @@
  * diff.js - is a collection of difference-management code
  */
 
-import _ from 'lodash-es';
+var _ = window._;
+if(typeof window._ == 'undefined') {
+  _ = require('lodash-es');
+}
 
 var Options = require('./options.es6');
 var Runtime;

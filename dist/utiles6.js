@@ -51,12 +51,15 @@
 	var log = __webpack_require__(5);
 	var lists = __webpack_require__(6);
 
-	module.exports = {
+	var UtilES6 = {
 	  diff: diff,
 	  runtime: runtime,
 	  log: log,
 	  lists: lists
 	};
+
+	module.exports = UtilES6;
+	window.utiles6 = UtilES6;
 
 /***/ },
 /* 1 */

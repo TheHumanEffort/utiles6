@@ -1,29 +1,27 @@
 /*
  * UtilES6 - a collection of ES6 modules offer some handy patterns
  * that I have found useful.
- * 
+ *
  * diff.js - is a collection of difference-management code
  */
 
-var _ = window._;
-if(typeof window._ == 'undefined') {
-  _ = require('lodash-es');
-}
+var _ = require('./lodash.es6');
 
 var Options = require('./options.es6');
 var Runtime;
 
 function run(fn,context,options) {
   if(options.sync == false) {
-    Runtime = Runtime || require('./runtime.es6'); 
-    Runtime.run(fn,context,options);
+    Runtime = Runtime || require('./runtime.es6');
+    return Runtime.process(fn,context,options);
   } else {
     while(fn.call(context) !== false);
+    return function() {};
   }
 };
 
 // diff.set(options), call back to add/remove items from options.start
-// so that it becomes options.target.  
+// so that it becomes options.target.
 
 var Constants = {
   ADD: 'add',
@@ -49,7 +47,7 @@ exports._perform = function(operation,options) {
     else
       throw new Error("Could not find callback for "+operation.type);
   };
-  
+
   switch(operation.type) {
   case Constants.ADD:
     return p(options.add,operation.object);

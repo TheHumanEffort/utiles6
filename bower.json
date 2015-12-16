@@ -1,0 +1,19 @@
+{
+  "name": "utiles6",
+  "description": "A set of high-level utility functions that apply to many different applications",
+  "main": "dist/utiles6.js",
+  "authors": [
+    "Daniel Staudigel <dstaudigel@gmail.com>"
+  ],
+  "license": "ISC",
+  "homepage": "https://github.com/TheHumanEffort/utiles6",
+  "moduleType": [],
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}

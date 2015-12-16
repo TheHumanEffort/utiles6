@@ -1,10 +1,10 @@
 /*
  * UtilES6 - a collection of ES6 modules offer some handy patterns
  * that I have found useful.
- * 
+ *
  * runtime.js - is a mechanism for organizing code so that it behaves
- * better in a runtime-critical way.  The idea is that nothing should 
- * run for longer than a very small number of ms.  Runtime will warn 
+ * better in a runtime-critical way.  The idea is that nothing should
+ * run for longer than a very small number of ms.  Runtime will warn
  * you when that happens, and give you tools for preventing it.
  *
  */
@@ -22,15 +22,20 @@ var globalOptions = {
   // to give plenty of time in between to get non-background work done,
   // and at the same high enough to let background jobs get some real
   // work done.
-  interval: 50
+  interval: 50,
+
+  waitInterval: 250,
 }
 
 var operations = [];
+var waitingOperations = [];
+var lastWaitingCheck = new Date();
 
 var interval = null;
 var intervalPeriod = null;
 
 var Runtime = {
+  WAIT: 'wait',
   // Runtime.run runs a callback immediately, checking it to ensure
   // it does not exceed a run time of warnLatency.
   run: function(callback,context,options) {
@@ -65,7 +70,7 @@ var Runtime = {
   // the runtime system -
   // { maximum
   config: function(options) {
-    
+
   },
 
   // internal functions:
@@ -74,11 +79,31 @@ var Runtime = {
   // each work cycle.
   _intervalCallback: function() {
     var intervalStart = new Date();
+    var done = false;
 
-    while((new Date() - intervalStart) < globalOptions.targetLatency) {
+    // Before doing anything else, we need to check if any "waiting" operations
+    // are ready to be worked on.
+    if(intervalStart - lastWaitingCheck > globalOptions.waitInterval)
+    {
+      var readyOperations = [];
+      for(var i in waitingOperations) {
+        if(waitingOperations[i].waitUntil <= intervalStart)
+          readyOperations.push(waitingOperations[i]);
+      }
+
+      // ready operations are added back to the operations queue, and removed
+      // from the waiting operations queue.
+      waitingOperations = _.difference(waitingOperations,readyOperations);
+      operations = _.union(operations,readyOperations);
+
+      lastWaitingCheck = intervalStart;
+    }
+
+    // Until our time is up, do real things:
+    while((new Date() - intervalStart) < globalOptions.targetLatency && !done) {
       this._runOne();
     }
-    
+
     var intervalEnd = new Date();
     this._intervalFinished(intervalEnd - intervalStart);
   },
@@ -86,28 +111,34 @@ var Runtime = {
   // run a single item from the operations queue:
   _runOne: function() {
     var operation = operations.shift();
-    
+
     if(!operation) {
       this._updateInterval();
       return;
     }
-    
+
     var res = true;
-    
+
     res = this.run(operation.callback,operation.context,operation.options);
-    
-    if(res !== false) {
+
+    if(res === Runtime.WAIT) {
+      operation.waitUntil = new Date(new Date().getTime() + globalOptions.waitInterval);
+      waitingOperations.push(operation);
+    }
+    else if(res !== false) {
       operations.push(operation);
     }
+
+    return res;
   },
 
-  // an exception occurred during running, 
+  // an exception occurred during running,
   _reportException: function(exception) {
     console.error("Exception during runtime callback");
     console.error(exception);
   },
-  
-  // _intervalFinished - 
+
+  // _intervalFinished -
   _intervalFinished: function(intervalDuration) {
     if(intervalDuration > globalOptions.warnLatency) {
       console.warn(`Interval exceeded warning threshold - at ${ intervalDuration }ms (> ${ globalOptions.warnLatency })`);
@@ -119,7 +150,7 @@ var Runtime = {
   // firing at the rate that is currently configured).
 
   _updateInterval: function() {
-    if(operations.length) {
+    if(operations.length > 0 || waitingOperations.length > 0) {
       if(intervalPeriod != globalOptions.interval)
         this._stopInterval();
 
@@ -144,4 +175,4 @@ var Runtime = {
   }
 };
 
-export default Runtime;
+module.exports = Runtime;

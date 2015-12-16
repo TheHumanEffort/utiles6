@@ -65,29 +65,59 @@ const SetOptions = {
   },
   optional: {
     sync: { type: 'boolean', description: 'should the operation return immediately, or once the whole operation has completed', 'default': true },
-    context: { type: 'object', description: 'the context for callbacks', 'default': undefined }
+    context: { type: 'object', description: 'the context for callbacks', 'default': undefined },
+    removeFirst: { type: 'boolean', description: 'if true, remove items first, then add.', 'default': false }
   }
 }
 
 exports.set = function(options) {
-  options = Options.check(options,SetOptions);
+  return new Promise((resolve,reject,onCancel) => {
+    options = Options.check(options,SetOptions);
 
-  var context = {
-    operations: additions(options).concat(removals(options)),
-    operationIndex: 0
-  };
+    var toAdd = additions(options);
+    var toRemove = removals(options);
+    var operations;
 
-  var module = this;
+    if(options.removeFirst)
+      operations = toRemove.concat(toAdd);
+    else
+      operations = toAdd.concat(toRemove);
 
-  function worker() {
-    if(this.operationIndex >= this.operations.length) {
-      return false;
+    var context = {
+      operations: additions(options).concat(removals(options)),
+      operationIndex: 0,
+      cancelled: false,
+      paused: false
+    };
+
+    if(onCancel) {
+      onCancel(() => { context.cancelled = true; })
     }
 
-    module._perform(this.operations[this.operationIndex++],options);
+    var module = this;
 
-    return true;
-  }
+    function worker() {
+      if(this.paused) return Runtime.WAIT;
+      if(this.cancelled) return false;
 
-  return run(worker,context,options);
+      if(options.progress) options.progress.call(options.context,this.operationIndex,this.operations.length);
+      
+      if(this.operationIndex >= this.operations.length) {
+        return false;
+      }
+
+      var res = module._perform(this.operations[this.operationIndex++],options);
+
+      if(res && res.then) {
+        context.paused = true;
+        res.finally(function() {
+          context.paused = false;
+        });
+      }
+
+      return true;
+    }
+
+    run(worker,context,options);
+  });
 }

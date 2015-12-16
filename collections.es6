@@ -44,7 +44,7 @@ module.exports = {
         }
       }
 
-      toDo.push({ 'value': object , 'path': '' });
+      ctx.toDo.push({ 'value': object , 'path': '' });
 
       Runtime.process(worker,ctx);
     });

@@ -11,10 +11,11 @@
 import Runtime from './runtime.es6';
 import Promise from './promise.es6';
 
-module.exports = {
-  filter: function(list,callback,context) {
+function iterateAndResolve(actual_worker) {
+  return function(list,callback,context) {
     return new Promise((resolve,reject,onCancel) => {
       var ctx = {
+        callback: callback,
         list: list,
         res: [],
         index: 0,
@@ -36,16 +37,13 @@ module.exports = {
           return false;
         }
 
-        var r = false;
         var v = this.list[this.index++];
 
         try {
-          r = callback(v);
+          actual_worker.call(this,v);
         } catch(x) {
           reject(x);
         }
-
-        if(r) this.res.push(v);
 
         return true;
       }
@@ -53,4 +51,18 @@ module.exports = {
       Runtime.process(worker,ctx);
     });
   }
+}
+
+module.exports = {
+  map: iterateAndResolve(function(v) {
+    this.res.push(this.callback.call(this,v));
+  }),
+  filter: iterateAndResolve(function(v) {
+    if(this.callback.call(this,v))
+      this.res.push(v);
+  }),
+  each: iterateAndResolve(function(v) {
+    this.callback.call(this,v);
+    this.res.push(v);
+  })
 };
